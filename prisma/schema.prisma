@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -14,23 +8,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//
+// ENUMS
+//
 enum Role {
-  USER
-  INTERN
-  MENTEE
   ADMIN
+  MENTOR
+  INTERN
 }
 
-model User{
-  id       String   @id @default(cuid())
-  name      String?
-  email     String?  @unique
-  password  String?
-  role      String   @default("USER") // USER, ADMIN, SUPER_ADMIN
-  isActive  Boolean  @default(true)
-  emailVerified Boolean @default(false)
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ResourceCategory {
+  DOCUMENT
+  VIDEO
+  LINK
+  OTHER
+}
+
+//
+// MODELS
+//
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String      @unique
+  password      String?
+  role          Role        @default(INTERN)
+  isActive      Boolean     @default(true)
+  emailVerified Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  tasksCreated  Task[]      @relation("TasksCreatedByMentor")
+  tasksAssigned Task[]      @relation("TasksAssignedToIntern")
+  resources     Resource[]
+  notifications Notification[]
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?
+  status        TaskStatus   @default(TODO)
+  priority      TaskPriority @default(MEDIUM)
+  dueDate       DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  createdById   String
+  createdBy     User         @relation("TasksCreatedByMentor", fields: [createdById], references: [id])
+  assignedToId  String
+  assignedTo    User         @relation("TasksAssignedToIntern", fields: [assignedToId], references: [id])
+
+  // AI review & feedback
+  aiFeedback    String?
+  aiScore       Float?
+}
+
+model Resource {
+  id            String           @id @default(cuid())
+  title         String
+  url           String
+  category      ResourceCategory @default(OTHER)
+  uploadedAt    DateTime         @default(now())
+
+  // Relations
+  uploadedById  String
+  uploadedBy    User             @relation(fields: [uploadedById], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
 }
-
-
